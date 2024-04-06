@@ -8,10 +8,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         () => {
           console.log("Text successfully copied and calling api.");
           let apiCall = new XMLHttpRequest();
-          apiCall.open("GET", "<API Call>");
+          apiCall.open("GET", "http:localhost:3000/save");
           apiCall.send();
           apiCall.onload = () => {
-            console.log(JSON.parse(apiCall.response))
+            console.log(apiCall.response)
           }
           // window.alert('rd done')
         },
