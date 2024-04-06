@@ -29,6 +29,6 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   else console.log("This is neither a youtube video page nor a youtube video link you have clicked on");
 
   // If we have got a videoURL, send it to the content script
-  if (videoURL) chrome.tabs.sendMessage(tab.id, { action: "callApi", videoURL });
+  if (videoURL) chrome.tabs.sendMessage(tab.id, { action: "callApi", videoURL })
 
 });
