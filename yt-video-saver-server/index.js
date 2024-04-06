@@ -1,5 +1,6 @@
 // Importing required modules
 const express = require('express');
+const bodyParser = require('body-parser')
 const cors = require('cors');
 
 // Creating an instance of Express
@@ -10,9 +11,10 @@ const PORT = 3000;
 app.use(cors());
 
 // Setting up a route to handle GET requests at '/download'
-app.get('/save', (req, res) => {
+app.post('/save', (req, res) => {
   // Implementation will go here
-  res.status(200).send('Saved')
+  console.log(req.query)
+  res.status(200).send(req.query)
 });
 
 // Instantiating a server to listen on port 8080
