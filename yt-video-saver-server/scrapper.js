@@ -12,12 +12,12 @@ module.exports = async function puppeteerScrapper(videoId) {
       request(url, function (error, response, html) {
         // Print the error if one occurred
         if (error) {
-          console.error('error:', error); 
+          console.error('error:', error);
           reject(error)
         }
-         else {
+        else {
           // Print the response status code if a response was received
-          console.log('statusCode:', response && response.statusCode); 
+          console.log('statusCode:', response && response.statusCode);
           // Parse the HTML with cheerio
           let $ = cheerio.load(html)
           // Get video info from Youtube API
@@ -50,5 +50,5 @@ module.exports = async function puppeteerScrapper(videoId) {
       reject(error)
     }
   })
-  
+
 }
