@@ -1,10 +1,6 @@
 // Importing required modules
 const express = require('express');
-const bodyParser = require('body-parser')
 const cors = require('cors');
-const request = require('request');
-const cheerio = require('cheerio');
-const fs = require('fs');
 const scrapper = require('./scrapper')
 // Creating an instance of Express
 const app = express();
@@ -14,9 +10,14 @@ app.use(cors());
 // Setting up a route to handle GET requests at '/download'
 app.post('/save', async (req, res) => {
   // Calling the scrapper function to scrape the video URL
-  let videoInfo = await scrapper(req.query.videoId)
-  // Sending the scraped video URL back as a response
-  res.status(200).send(videoInfo)
+  scrapper(req.query.videoId).then((videoInfo) => {
+    // Sending the scraped video URL back as a response
+    res.status(200).send(videoInfo)
+  }).catch((err) => {
+    // Sending an error response if the video URL cannot be scraped
+    res.status(400).send(err)
+  })
+  
 });
 // Instantiating a server to listen on port 8080
 app.listen(PORT, () => {

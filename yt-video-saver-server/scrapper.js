@@ -1,52 +1,54 @@
-const puppeteer = require('puppeteer')
 
+const request = require('request')
+const cheerio = require('cheerio');
 module.exports = async function puppeteerScrapper(videoId) {
-  try {
-    // Declare variable for video information
-    let videoInfo
-    // Initialize url
-    let url = `https://www.youtube.com/watch?v=${videoId}`
-    // Launch the browser and open a new blank page
-    const browser = await puppeteer.launch({ headless: true });
-    const page = await browser.newPage();
-    // Set the viewport size for the page
-    await page.setViewport({ width: 1280, height: 800 });
-    // Navigate the page to a URL
-    await page.goto(url);
-    // Get the video info
-    videoInfo = await page.evaluate(() => {
-      let tags = []
-      let tagsElems = document.querySelectorAll('meta[property="og:video:tag"]')
-      for (let tagsElem of tagsElems) {
-        tags.push(tagsElem.content)
-      }
-      return {
-        url: document.querySelector('meta[property="og:url"]').content,
-        title: document.querySelector('meta[property="og:title"]').content,
-        description: document.querySelector('meta[property="og:description"]').content,
-        uploadedOn: document.querySelector('meta[itemprop="uploadDate"]').content,
-        publishedOn: document.querySelector('meta[itemprop="datePublished"]').content,
-        thumbnail: document.querySelector('meta[property="og:image"]').content,
-        tags: tags,
-        // keywords: document.querySelector('meta[name="keywords"]').content,
-        embedUrl: document.querySelector('meta[property="og:video:url"]').content,
-        views: document.querySelector('meta[itemprop="interactionCount"]').content,
-        isFamilyFriendly: document.querySelector('meta[itemprop="isFamilyFriendly"]').content,
-        requiresSubscription: document.querySelector('meta[itemprop="requiresSubscription"]').content,
-        identifier: document.querySelector('meta[itemprop="identifier"]').content,
-        length: document.querySelector('meta[itemprop="duration"]').content,
-        category: document.querySelector('meta[property="og:type"]').content,
-      }
-    });
-    console.log('videoInfo: ', videoInfo)
-    // Close the browser
-    browser.close()
-    // Return the video info
-    return videoInfo
-  } catch (error) {
-    // Handle any errors
-    console.log(error)
-    // Return an error message
-    return error
-  }
+  return new Promise((resolve, reject) => {
+    try {
+      // Declare variable for video information
+      let videoInfo
+      // Initialize url
+      let url = `https://www.youtube.com/watch?v=${videoId}`
+      // Request video info from Youtube API
+      request(url, function (error, response, html) {
+        // Print the error if one occurred
+        if (error) {
+          console.error('error:', error); 
+          reject(error)
+        }
+         else {
+          // Print the response status code if a response was received
+          console.log('statusCode:', response && response.statusCode); 
+          // Parse the HTML with cheerio
+          let $ = cheerio.load(html)
+          // Get video info from Youtube API
+          videoInfo = {
+            title: $('meta[property="og:title"]').attr('content'),
+            description: $('meta[property="og:description"]').attr('content'),
+            url: $('meta[property="og:url"]').attr('content'),
+            thumbnail: $('meta[property="og:image"]').attr('content'),
+            uploadedOn: $('meta[itemprop="uploadDate"]').attr('content'),
+            publishedOn: $('meta[itemprop="datePublished"]').attr('content'),
+            tags: $('meta[property="og:video:tag"]').attr('content'),
+            keywords: $('meta[name="keywords"]').attr('content').split(','),
+            embedUrl: $('meta[property="og:video:url"]').attr('content'),
+            views: $('meta[itemprop="interactionCount"]').attr('content'),
+            isFamilyFriendly: $('meta[itemprop="isFamilyFriendly"]').attr('content'),
+            requiresSubscription: $('meta[itemprop="requiresSubscription"]').attr('content'),
+            identifier: $('meta[itemprop="identifier"]').attr('content'),
+            length: $('meta[itemprop="duration"]').attr('content'),
+            category: $('meta[property="og:type"]').attr('content'),
+          }
+          // Return video info to caller
+          console.log('oas cheerioObj: ', videoInfo)
+          resolve(videoInfo)
+        }
+      });
+    } catch (error) {
+      // Handle any errors
+      console.log(error)
+      // Return an error message
+      reject(error)
+    }
+  })
+  
 }
