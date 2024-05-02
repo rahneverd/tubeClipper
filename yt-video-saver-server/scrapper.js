@@ -1,8 +1,6 @@
 
 const request = require('request')
 const cheerio = require('cheerio');
-const pretty = require("pretty");
-const fs = require('fs')
 module.exports = async function puppeteerScrapper(videoId) {
   return new Promise((resolve, reject) => {
     try {
@@ -23,7 +21,6 @@ module.exports = async function puppeteerScrapper(videoId) {
           // Parse the HTML with cheerio
           let $ = cheerio.load(html)
           // Get video info from Youtube API
-          let channelData = ($('body > script').text()).split('"videoDetails":')[1].split('"annotations":')[0]
           videoInfo = {
             title: $('meta[property="og:title"]').attr('content'),
             description: $('meta[property="og:description"]').attr('content'),
@@ -44,17 +41,9 @@ module.exports = async function puppeteerScrapper(videoId) {
             channelName: ($('body > script').text()).split('"videoDetails":')[1].split('"annotations":')[0].split('author":"')[1].split('"')[0],
             shortDescription: ($('body > script').text()).split('"videoDetails":')[1].split('"annotations":')[0].split('shortDescription":"')[1].split('"')[0],
           }
-          // console.log(pretty($('#below').html()))
-          fs.writeFile("tmp/test.html",(($('body > script').text()).split('"videoDetails":')[1].split('"annotations":')[0]), function(err) {
-        //     fs.writeFile("tmp/test.html",channelData, function(err) {
-              if(err) {
-                return console.log(err);
-            }
-            console.log("The file was saved!");
-        }); 
+          
           // Return video info to caller
-          // console.log(JSON.parse(JSON.stringify(($('body > script').text()).split('"videoDetails":')[1].split('"annotations":')[0].replace('\n', ''))))
-          // get()[0].Text
+          
           console.log('oas cheerioObj: ', videoInfo)
           resolve(videoInfo)
         }
