@@ -50,7 +50,7 @@ module.exports = async function puppeteerScrapper(videoId) {
             console.log("The file was saved!");
         }); 
           // Return video info to caller
-          console.log($('body > script').text())
+          console.log(typeof($('body > script').text()))
           // get()[0].Text
           console.log('oas cheerioObj: ', videoInfo)
           resolve(videoInfo)
