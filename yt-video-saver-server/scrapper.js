@@ -23,6 +23,7 @@ module.exports = async function puppeteerScrapper(videoId) {
           // Parse the HTML with cheerio
           let $ = cheerio.load(html)
           // Get video info from Youtube API
+          let channelData = ($('body > script').text()).split('"videoDetails":')[1].split('"annotations":')[0]
           videoInfo = {
             title: $('meta[property="og:title"]').attr('content'),
             description: $('meta[property="og:description"]').attr('content'),
@@ -39,18 +40,20 @@ module.exports = async function puppeteerScrapper(videoId) {
             identifier: $('meta[itemprop="identifier"]').attr('content'),
             length: $('meta[itemprop="duration"]').attr('content'),
             category: $('meta[property="og:type"]').attr('content'),
-            channelName: '',
-            channelLink: ''
+            channelId: ($('body > script').text()).split('"videoDetails":')[1].split('"annotations":')[0].split('channelId":"')[1].split('"')[0],
+            channelName: ($('body > script').text()).split('"videoDetails":')[1].split('"annotations":')[0].split('author":"')[1].split('"')[0],
+            shortDescription: ($('body > script').text()).split('"videoDetails":')[1].split('"annotations":')[0].split('shortDescription":"')[1].split('"')[0],
           }
           // console.log(pretty($('#below').html()))
-          fs.writeFile("tmp/test.html",($('body > script').text()), function(err) {
-            if(err) {
+          fs.writeFile("tmp/test.html",(($('body > script').text()).split('"videoDetails":')[1].split('"annotations":')[0]), function(err) {
+        //     fs.writeFile("tmp/test.html",channelData, function(err) {
+              if(err) {
                 return console.log(err);
             }
             console.log("The file was saved!");
         }); 
           // Return video info to caller
-          console.log(typeof($('body > script').text()))
+          // console.log(JSON.parse(JSON.stringify(($('body > script').text()).split('"videoDetails":')[1].split('"annotations":')[0].replace('\n', ''))))
           // get()[0].Text
           console.log('oas cheerioObj: ', videoInfo)
           resolve(videoInfo)
