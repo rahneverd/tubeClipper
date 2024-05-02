@@ -4,7 +4,7 @@ const cors = require('cors');
 const scrapper = require('./scrapper')
 // Creating an instance of Express
 const app = express();
-const PORT = 3000;
+const PORT = 5000;
 // Using CORS middleware to enable cross-origin resource sharing
 app.use(cors());
 // Setting up a route to handle GET requests at '/download'

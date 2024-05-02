@@ -1,6 +1,8 @@
 
 const request = require('request')
 const cheerio = require('cheerio');
+const pretty = require("pretty");
+const fs = require('fs')
 module.exports = async function puppeteerScrapper(videoId) {
   return new Promise((resolve, reject) => {
     try {
@@ -37,8 +39,19 @@ module.exports = async function puppeteerScrapper(videoId) {
             identifier: $('meta[itemprop="identifier"]').attr('content'),
             length: $('meta[itemprop="duration"]').attr('content'),
             category: $('meta[property="og:type"]').attr('content'),
+            channelName: '',
+            channelLink: ''
           }
+          // console.log(pretty($('#below').html()))
+          fs.writeFile("tmp/test.html",($('body > script').text()), function(err) {
+            if(err) {
+                return console.log(err);
+            }
+            console.log("The file was saved!");
+        }); 
           // Return video info to caller
+          console.log($('body > script').text())
+          // get()[0].Text
           console.log('oas cheerioObj: ', videoInfo)
           resolve(videoInfo)
         }

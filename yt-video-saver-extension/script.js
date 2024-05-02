@@ -8,7 +8,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         () => {
           console.log("Text successfully copied and calling api.");
           let apiCall = new XMLHttpRequest();
-          apiCall.open("POST", `http:localhost:3000/save?videoId=${videoId}`);
+          apiCall.open("POST", `http:localhost:5000/save?videoId=${videoId}`);
           apiCall.send();
           apiCall.onload = () => {
             console.log(apiCall.response)
