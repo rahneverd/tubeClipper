@@ -6,7 +6,6 @@ const mysql = require("mysql2");
 
 // set env
 require("dotenv").config();
-const PORT = 5000;
 
 // Creating an instance of Express
 const app = express();
@@ -76,8 +75,8 @@ const createTableQuery = `CREATE TABLE IF NOT EXISTS video_info (
 pool.query(createTableQuery).then((resp) => {
   console.log("Table 'video_info' created successfully");
   // Instantiating a server to listen on port 8080
-  app.listen(PORT, () => {
-    console.log(`Server is running at http://localhost:${PORT}`);
+  app.listen(process.env.PORT, () => {
+    console.log(`Server is running at http://localhost:${process.env.PORT}`);
   });
 }).catch(error => {
   console.error("Error creating table: " + error.message);
