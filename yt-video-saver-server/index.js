@@ -1,11 +1,15 @@
 // Importing required modules
-const express = require("express");
-const cors = require("cors");
-const scrapper = require("./scrapper");
-const mysql = require("mysql2");
+const express = require('express');
+const cors = require('cors');
+const scrapper = require('./scrapper');
+const mysql = require('mysql2');
+// const ytdl = require('ytdl-core');
+import youtubedl from 'youtube-dl-exec';
+import path from 'path';
+import fs from 'fs';
 
 // set env
-require("dotenv").config();
+require('dotenv').config();
 
 // Creating an instance of Express
 const app = express();
@@ -14,30 +18,34 @@ const app = express();
 app.use(cors());
 
 // create a connection pool to MySQL
-const pool = mysql.createPool({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASS,
-  database: process.env.DB_NAME,
-}).promise()
-
-
+const pool = mysql
+  .createPool({
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASS,
+    database: process.env.DB_NAME
+  })
+  .promise();
 
 // Setting up a route to handle GET requests at '/download'
-app.post("/save", async (req, res) => {
+app.post('/save', async (req, res) => {
   // Calling the scrapper function to scrape the video URL
   scrapper(req.query.videoId)
-    .then(async (videoInfo) => {      
+    .then(async (videoInfo) => {
       try {
         // Inserting the scraped data into the 'video_info' table
         videoInfo.keywords = JSON.stringify(videoInfo.keywords);
-        videoInfo.timeStamp = (new Date()).toISOString()
-        await pool.query("INSERT INTO video_info SET ?",
-          videoInfo)
-        // Sending the scraped video URL back as a response
-        res.status(200).send(videoInfo);
+        videoInfo.timeStamp = new Date().toISOString();
+        download()
+          .then(async (outputFilePath) => {
+            videoInfo.outputFilePath = outputFilePath;
+            await pool.query('INSERT INTO video_info SET ?', videoInfo);
+            // Sending the scraped video URL back as a response
+            res.status(200).send(videoInfo);
+          })
+          .catch((err) => {});
       } catch (error) {
-        console.log(error)
+        console.log(error);
         // Sending an error response if the video URL cannot be scraped
         res.status(400).send(err);
       }
@@ -47,6 +55,66 @@ app.post("/save", async (req, res) => {
       res.status(400).send(err);
     });
 });
+
+async function download(url) {
+  return new Promise((resolve, reject) => {
+    try {
+      /**
+       * We'll use the child process returned by youtubedl.exec
+       * and pipe the output directly to the output stream
+       */
+      const child = youtubedl.exec(url, {
+        dumpSingleJson: true
+      });
+
+      /**
+       * We use this buffer to store the information of the video
+       */
+      const videoInfoBuffer = [];
+      child.stdout?.on('data', (chunk) => {
+        // console.log(chunk.toString())
+        videoInfoBuffer.push(chunk);
+      });
+
+      /**
+       * Once exited, notify the user where the file was saved
+       * If there's an error, notify the user also
+       */
+      child.on('exit', (code) => {
+        if (code !== 0) {
+          console.error('Failed to download video');
+          reject({ code: 1, message: 'Failed to download video' });
+        }
+
+        /**
+         * Get the default title of the video if not output flag provided
+         */
+        const videoInfoString =
+          Buffer.concat(videoInfoBuffer).toString('utf-8');
+        const videoInfo = JSON.parse(videoInfoString);
+        const videoTitle = videoInfo.fulltitle.replace(/[^\w\s]/gi, '');
+        const outputFilePath = path.resolve(
+          __dirname,
+          '/downloads',
+          `${videoTitle}.mp4`
+        );
+        const outputStream = fs.createWriteStream(outputFilePath);
+
+        // Write the video to file
+        child.stdout?.pipe(outputStream);
+
+        // Notify user once done
+        outputStream.on('finish', () => {
+          console.log(`Video downloaded and saved to ${outputFilePath}`);
+          outputStream.end();
+          resolve(outputFilePath);
+        });
+      });
+    } catch (error) {
+      reject({ code: 0, message: error });
+    }
+  });
+}
 
 //   // Create video_info table if it doesn't exist
 const createTableQuery = `CREATE TABLE IF NOT EXISTS video_info (
@@ -69,17 +137,19 @@ const createTableQuery = `CREATE TABLE IF NOT EXISTS video_info (
   channelId VARCHAR(255),
   channelName VARCHAR(255),
   shortDescription TEXT,
-  timeStamp TIMESTAMP
+  timeStamp TIMESTAMP,
+  outputFilePath TEXT
 )`;
 
-pool.query(createTableQuery).then((resp) => {
-  console.log("Table 'video_info' created successfully");
-  // Instantiating a server to listen on port 8080
-  app.listen(process.env.PORT, () => {
-    console.log(`Server is running at http://localhost:${process.env.PORT}`);
+pool
+  .query(createTableQuery)
+  .then((resp) => {
+    console.log("Table 'video_info' created successfully");
+    // Instantiating a server to listen on port 8080
+    app.listen(process.env.PORT, () => {
+      console.log(`Server is running at http://localhost:${process.env.PORT}`);
+    });
+  })
+  .catch((error) => {
+    console.error('Error creating table: ' + error.message);
   });
-}).catch(error => {
-  console.error("Error creating table: " + error.message);
-})
-
-
