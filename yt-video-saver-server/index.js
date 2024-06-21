@@ -4,9 +4,12 @@ const cors = require('cors');
 const scrapper = require('./scrapper');
 const mysql = require('mysql2');
 // const ytdl = require('ytdl-core');
-import youtubedl from 'youtube-dl-exec';
-import path from 'path';
-import fs from 'fs';
+// import youtubedl from 'youtube-dl-exec';
+const youtubedl = require('youtube-dl-exec');
+// import path from 'path';
+const path = require('path');
+// import fs from 'fs';
+const fs = require('fs');
 
 // set env
 require('dotenv').config();
@@ -36,14 +39,19 @@ app.post('/save', async (req, res) => {
         // Inserting the scraped data into the 'video_info' table
         videoInfo.keywords = JSON.stringify(videoInfo.keywords);
         videoInfo.timeStamp = new Date().toISOString();
-        download()
+        download(videoInfo.url)
           .then(async (outputFilePath) => {
             videoInfo.outputFilePath = outputFilePath;
             await pool.query('INSERT INTO video_info SET ?', videoInfo);
             // Sending the scraped video URL back as a response
             res.status(200).send(videoInfo);
           })
-          .catch((err) => {});
+          .catch(async (err) => {
+            console.log('oas err: ', err);
+            await pool.query('INSERT INTO video_info SET ?', videoInfo);
+            // Sending the scraped video URL back as a response
+            res.status(200).send(videoInfo);
+          });
       } catch (error) {
         console.log(error);
         // Sending an error response if the video URL cannot be scraped
@@ -57,6 +65,7 @@ app.post('/save', async (req, res) => {
 });
 
 async function download(url) {
+  console.log('oas url: ', url);
   return new Promise((resolve, reject) => {
     try {
       /**
@@ -84,31 +93,33 @@ async function download(url) {
         if (code !== 0) {
           console.error('Failed to download video');
           reject({ code: 1, message: 'Failed to download video' });
+        } else {
+          /**
+           * Get the default title of the video if not output flag provided
+           */
+          const videoInfoString =
+            Buffer.concat(videoInfoBuffer).toString('utf-8');
+          const videoInfo = JSON.parse(videoInfoString);
+          const videoTitle = videoInfo.fulltitle.replace(/[^\w\s]/gi, '');
+          // ,
+          //   '/downloads'
+          const outputFilePath = path.resolve(
+            __dirname,
+            'downloads',
+            `${videoTitle}.mp4`
+          );
+          const outputStream = fs.createWriteStream(outputFilePath);
+
+          // Write the video to file
+          child.stdout?.pipe(outputStream);
+
+          // Notify user once done
+          outputStream.on('finish', () => {
+            console.log(`Video downloaded and saved to ${outputFilePath}`);
+            outputStream.end();
+            resolve(outputFilePath);
+          });
         }
-
-        /**
-         * Get the default title of the video if not output flag provided
-         */
-        const videoInfoString =
-          Buffer.concat(videoInfoBuffer).toString('utf-8');
-        const videoInfo = JSON.parse(videoInfoString);
-        const videoTitle = videoInfo.fulltitle.replace(/[^\w\s]/gi, '');
-        const outputFilePath = path.resolve(
-          __dirname,
-          '/downloads',
-          `${videoTitle}.mp4`
-        );
-        const outputStream = fs.createWriteStream(outputFilePath);
-
-        // Write the video to file
-        child.stdout?.pipe(outputStream);
-
-        // Notify user once done
-        outputStream.on('finish', () => {
-          console.log(`Video downloaded and saved to ${outputFilePath}`);
-          outputStream.end();
-          resolve(outputFilePath);
-        });
       });
     } catch (error) {
       reject({ code: 0, message: error });
