@@ -30,6 +30,10 @@ const pool = mysql
   })
   .promise();
 
+app.get('/', (req, res) => {
+  res.send('App is running!');
+});
+
 // Setting up a route to handle GET requests at '/download'
 app.post('/save', async (req, res) => {
   // Calling the scrapper function to scrape the video URL
