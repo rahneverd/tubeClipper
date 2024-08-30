@@ -34,46 +34,32 @@ app.get('/', (req, res) => {
   res.send('App is running!');
 });
 
-// Setting up a route to handle GET requests at '/download'
+// Setting up a route to handle POST requests at '/save'
 app.post('/save', async (req, res) => {
   try {
     const secretKey = JSON.parse(req.query.data).secretKey;
     const videoId = JSON.parse(req.query.data).videoId;
     await checkSecretKey(secretKey);
-    let videoInfo = await save(videoId);
-    // Sending the scraped video URL back as a response
+    // Scrape video info and save to DB
+    let videoInfo = await saveVideo(videoId);
+    // Sending the scraped video info back as a response
     res.status(200).send(videoInfo);
-    // res.status(200).send('success');
-    // // Calling the scrapper function to scrape the video URL
-    // scrapper(videoId)
-    //   .then(async (videoInfo) => {
-    //     try {
-    //       // Inserting the scraped data into the 'video_info' table
-    //       videoInfo.keywords = JSON.stringify(videoInfo.keywords);
-    //       videoInfo.timeStamp = new Date().toISOString();
-    //       download(videoInfo.url)
-    //         .then(async (outputFilePath) => {
-    //           videoInfo.outputFilePath = outputFilePath;
-    //           await pool.query('INSERT INTO video_info SET ?', videoInfo);
-    //           // Sending the scraped video URL back as a response
-    //           res.status(200).send(videoInfo);
-    //         })
-    //         .catch(async (err) => {
-    //           console.log('oas err: ', err);
-    //           await pool.query('INSERT INTO video_info SET ?', videoInfo);
-    //           // Sending the scraped video URL back as a response
-    //           res.status(200).send(videoInfo);
-    //         });
-    //     } catch (error) {
-    //       console.log(error);
-    //       // Sending an error response if the video URL cannot be scraped
-    //       res.status(400).send(err);
-    //     }
-    //   })
-    //   .catch((err) => {
-    //     // Sending an error response if the video URL cannot be scraped
-    //     res.status(400).send(err);
-    //   });
+  } catch (error) {
+    res.status(400).send(error);
+  }
+});
+
+// Setting up a route to handle POST requests at '/saveAndDownload'
+app.post('/saveAndDownload', async (req, res) => {
+  try {
+    const secretKey = JSON.parse(req.query.data).secretKey;
+    const videoId = JSON.parse(req.query.data).videoId;
+    await checkSecretKey(secretKey);
+    // Scrape video info and save to DB
+    let videoInfo = await saveVideo(videoId);
+    videoInfo = await downloadVideo(videoInfo);
+    // Sending the scraped video info back as a response
+    res.status(200).send(videoInfo);
   } catch (error) {
     res.status(400).send(error);
   }
@@ -89,7 +75,7 @@ function checkSecretKey(secretKey) {
   });
 }
 
-async function save(videoId) {
+async function saveVideo(videoId) {
   return new Promise((resolve, reject) => {
     // Calling the scrapper function to scrape the video URL
     scrapper(videoId)
@@ -126,15 +112,15 @@ async function save(videoId) {
   });
 }
 
-async function download(url) {
-  console.log('oas url: ', url);
+async function downloadVideo(videoInfo) {
+  console.log('oas url: ', videoInfo.url);
   return new Promise((resolve, reject) => {
     try {
       /**
        * We'll use the child process returned by youtubedl.exec
        * and pipe the output directly to the output stream
        */
-      const child = youtubedl.exec(url, {
+      const child = youtubedl.exec(videoInfo.url, {
         dumpSingleJson: true
       });
 
@@ -161,8 +147,8 @@ async function download(url) {
            */
           const videoInfoString =
             Buffer.concat(videoInfoBuffer).toString('utf-8');
-          const videoInfo = JSON.parse(videoInfoString);
-          const videoTitle = videoInfo.fulltitle.replace(/[^\w\s]/gi, '');
+          const videoInfoObj = JSON.parse(videoInfoString);
+          const videoTitle = videoInfoObj.fulltitle.replace(/[^\w\s]/gi, '');
           // ,
           //   '/downloads'
           const outputFilePath = path.resolve(
@@ -176,10 +162,16 @@ async function download(url) {
           child.stdout?.pipe(outputStream);
 
           // Notify user once done
-          outputStream.on('finish', () => {
+          outputStream.on('finish', async () => {
             console.log(`Video downloaded and saved to ${outputFilePath}`);
             outputStream.end();
-            resolve(outputFilePath);
+            // resolve(outputFilePath);
+            videoInfo.outputFilePath = outputFilePath;
+            await pool.query('UPDATE video_info SET ? WHERE url = ?', [
+              videoInfo,
+              videoInfo.url
+            ]);
+            resolve(videoInfo);
           });
         }
       });
