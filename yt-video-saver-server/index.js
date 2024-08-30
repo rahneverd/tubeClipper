@@ -36,37 +36,53 @@ app.get('/', (req, res) => {
 
 // Setting up a route to handle GET requests at '/download'
 app.post('/save', async (req, res) => {
-  // Calling the scrapper function to scrape the video URL
-  scrapper(req.query.videoId)
-    .then(async (videoInfo) => {
-      try {
-        // Inserting the scraped data into the 'video_info' table
-        videoInfo.keywords = JSON.stringify(videoInfo.keywords);
-        videoInfo.timeStamp = new Date().toISOString();
-        download(videoInfo.url)
-          .then(async (outputFilePath) => {
-            videoInfo.outputFilePath = outputFilePath;
-            await pool.query('INSERT INTO video_info SET ?', videoInfo);
-            // Sending the scraped video URL back as a response
-            res.status(200).send(videoInfo);
-          })
-          .catch(async (err) => {
-            console.log('oas err: ', err);
-            await pool.query('INSERT INTO video_info SET ?', videoInfo);
-            // Sending the scraped video URL back as a response
-            res.status(200).send(videoInfo);
-          });
-      } catch (error) {
-        console.log(error);
-        // Sending an error response if the video URL cannot be scraped
-        res.status(400).send(err);
-      }
+  save(req)
+    .then((response) => {
+      // Sending the scraped video URL back as a response
+      res.status(200).send(response);
     })
     .catch((err) => {
       // Sending an error response if the video URL cannot be scraped
       res.status(400).send(err);
     });
 });
+
+async function save(req) {
+  return new Promise((resolve, reject) => {
+    // Calling the scrapper function to scrape the video URL
+    scrapper(req.query.videoId)
+      .then(async (videoInfo) => {
+        try {
+          // Inserting the scraped data into the 'video_info' table
+          videoInfo.keywords = JSON.stringify(videoInfo.keywords);
+          videoInfo.timeStamp = new Date().toISOString();
+          // download(videoInfo.url)
+          //   .then(async (outputFilePath) => {
+          //     videoInfo.outputFilePath = outputFilePath;
+          //     await pool.query('INSERT INTO video_info SET ?', videoInfo);
+          //     // Sending the scraped video URL back as a response
+          //     res.status(200).send(videoInfo);
+          //   })
+          //   .catch(async (err) => {
+          //     console.log('oas err: ', err);
+          await pool.query('INSERT INTO video_info SET ?', videoInfo);
+          // Sending the scraped video URL back as a response
+          // res.status(200).send(videoInfo);
+          resolve(videoInfo);
+          // });
+        } catch (error) {
+          console.log(error);
+          // Sending an error response if the video URL cannot be scraped
+          // res.status(400).send(err);
+          reject(error);
+        }
+      })
+      .catch((err) => {
+        // Sending an error response if the video URL cannot be scraped
+        res.status(400).send(err);
+      });
+  });
+}
 
 async function download(url) {
   console.log('oas url: ', url);
