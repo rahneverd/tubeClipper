@@ -96,7 +96,6 @@ async function saveVideo(videoId) {
 }
 
 async function downloadVideo(videoInfo) {
-  console.log('oas url: ', videoInfo.url);
   return new Promise((resolve, reject) => {
     try {
       /**
@@ -144,7 +143,6 @@ async function downloadVideo(videoInfo) {
 
           // Notify user once done
           outputStream.on('finish', async () => {
-            console.log(`Video downloaded and saved to ${outputFilePath}`);
             outputStream.end();
             // resolve(outputFilePath);
             videoInfo.outputFilePath = outputFilePath;
