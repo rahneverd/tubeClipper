@@ -3,12 +3,8 @@ const express = require('express');
 const cors = require('cors');
 const scrapper = require('./scrapper');
 const mysql = require('mysql2');
-// const ytdl = require('ytdl-core');
-// import youtubedl from 'youtube-dl-exec';
 const youtubedl = require('youtube-dl-exec');
-// import path from 'path';
 const path = require('path');
-// import fs from 'fs';
 const fs = require('fs');
 
 // set env
@@ -80,33 +76,20 @@ async function saveVideo(videoId) {
     // Calling the scrapper function to scrape the video URL
     scrapper(videoId)
       .then(async (videoInfo) => {
-        // try {
-        // Inserting the scraped data into the 'video_info' table
         videoInfo.keywords = JSON.stringify(videoInfo.keywords);
         videoInfo.timeStamp = new Date().toISOString();
-        // download(videoInfo.url)
-        //   .then(async (outputFilePath) => {
-        //     videoInfo.outputFilePath = outputFilePath;
-        //     await pool.query('INSERT INTO video_info SET ?', videoInfo);
-        //     // Sending the scraped video URL back as a response
-        //     res.status(200).send(videoInfo);
-        //   })
-        //   .catch(async (err) => {
-        //     console.log('oas err: ', err);
-        await pool.query('INSERT INTO video_info SET ?', videoInfo);
-        // Sending the scraped video URL back as a response
-        //     res.status(200).send(videoInfo);
-        resolve(videoInfo);
-        //   });
-        // } catch (error) {
-        //   console.log(error);
-        //   // Sending an error response if the video URL cannot be scraped
-        //   // res.status(400).send(err);
-        // }
+        try {
+          // Inserting the scraped data into the 'video_info' table
+          await pool.query('INSERT INTO video_info SET ?', videoInfo);
+          // Sending the scraped video info back as a response
+          resolve(videoInfo);
+        } catch (error) {
+          // Sending an error response
+          reject(err);
+        }
       })
       .catch((err) => {
         // Sending an error response if the video URL cannot be scraped
-        // res.status(400).send(err);
         reject(err);
       });
   });
@@ -129,7 +112,6 @@ async function downloadVideo(videoInfo) {
        */
       const videoInfoBuffer = [];
       child.stdout?.on('data', (chunk) => {
-        // console.log(chunk.toString())
         videoInfoBuffer.push(chunk);
       });
 
@@ -139,7 +121,6 @@ async function downloadVideo(videoInfo) {
        */
       child.on('exit', (code) => {
         if (code !== 0) {
-          console.error('Failed to download video');
           reject({ code: 1, message: 'Failed to download video' });
         } else {
           /**
@@ -167,11 +148,17 @@ async function downloadVideo(videoInfo) {
             outputStream.end();
             // resolve(outputFilePath);
             videoInfo.outputFilePath = outputFilePath;
-            await pool.query('UPDATE video_info SET ? WHERE url = ?', [
-              videoInfo,
-              videoInfo.url
-            ]);
-            resolve(videoInfo);
+            try {
+              // updating data in the 'video_info' table
+              await pool.query('UPDATE video_info SET ? WHERE url = ?', [
+                videoInfo,
+                videoInfo.url
+              ]);
+              resolve(videoInfo);
+            } catch (error) {
+              // Sending an error response
+              reject(err);
+            }
           });
         }
       });
